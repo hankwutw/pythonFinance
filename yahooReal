@@ -1,0 +1,20 @@
+import urllib2
+import json
+import sys,csv,re
+import datetime
+from time import sleep
+import time
+from decimal import Decimal 
+url='https://tw.screener.finance.yahoo.net/future/q?type=ta&perd=5m&mkt=01&sym=WTX%26'
+print url
+response = urllib2.urlopen(url)
+d = response.read()
+   
+d=d.replace("null(","").replace(");","").replace("sections",'"sections"').replace(":0",":")
+    
+d=json.dumps(d).decode('string-escape').strip('"')
+    
+print d
+data = json.loads(d,parse_float=Decimal) 
+for x in data['ta']:
+    print x['t'],x['c']
