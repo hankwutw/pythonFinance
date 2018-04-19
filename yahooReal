@@ -31,10 +31,11 @@ for x in data['ta']:
     #print x['t'],x['c']
 #print dataList
 
-
+df=pd.DataFrame(dataList)
 
 macd, macdsignal, macdhist=ta.MACD(df['close'].values, fastperiod=MACD_FAST, slowperiod=MACD_SLOW, signalperiod=MACD_SIGNAL)
 
+#print macd
 
 ewma12 = pd.ewma(df['close'],span=MACD_FAST)
 ewma60 = pd.ewma(df['close'],span=MACD_SLOW)
@@ -42,15 +43,23 @@ mydif = ewma12-ewma60
 mydea = pd.ewma(dif,span=MACD_SIGNAL)
 mybar = (dif-dea) 
 
+#print mybar.values[-1]
+#print df
 
 fig = plt.figure(figsize=[18,5])
-plt.plot(df['time'],macd,label='macd dif')
-plt.plot(df['time'],macdsignal,label='signal dea')
-plt.plot(df['time'],macdhist,label='hist bar')
-
-
-plt.plot(df['time'],mydif,label='my dif')
-plt.plot(df['time'],mydea,label='my dea')
-plt.plot(df['time'],mybar,label='my bar')
+plt.xticks(df.index, df['time'])
+plt.xticks(rotation=90)
+plt.plot(df.index,macd,label='macd dif')
+plt.plot(df.index,macdsignal,label='signal dea')
+plt.plot(df.index,macdhist,label='hist bar')
+#plt.plot(df.index,mydif,label='my dif')
+#plt.plot(df.index,mydea,label='my dea')
+#plt.plot(df.index,mybar,label='my bar')
 
 plt.legend(loc='best')
+
+#print macd-macdsignal
+fig = plt.figure(figsize=[18,5])
+plt.xticks(df.index, df['time'])
+plt.xticks(rotation=90)
+plt.plot(df.index,df['close'])
