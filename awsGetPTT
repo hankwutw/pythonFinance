@@ -1,0 +1,56 @@
+# coding: utf-8
+
+import requests
+from bs4 import BeautifulSoup
+from slackclient import SlackClient
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+slack_token = "xoxp-132175588855-131572446965-147284066199-238614639fd1f966a4e3f0926fd328b0"
+sc = SlackClient(slack_token)
+
+checkAuthors= ['chengwaye','test520','cocoline']
+
+
+def callSlack(message):
+    sc.api_call(
+      "chat.postMessage",
+      channel="#ptt",
+      text=message
+    )
+
+def getPttMessage():
+    url_ticket = "https://www.ptt.cc/bbs/stock/index.html"
+    # count = [page #, article #, target #]
+    count = [0,0,0]
+    res = requests.get("https://www.ptt.cc/bbs/stock/index"+str(count[0])+".html", verify=False)
+    soup = BeautifulSoup(res.text,'html.parser')
+
+
+    for entry in soup.select('.r-ent'):
+            s = entry.select('.title')[0].text.encode('utf-8')
+            author=entry.select('.author')[0].text.encode('utf-8')
+            if author in checkAuthors:
+                print (s+"---->"+author)
+                #ss+= entry.select('.title')[0].text.encode('utf-8')
+                ss= "<a href='https://www.ptt.cc" + entry.select('.title')[0].a.get('href').encode('utf-8') + "'>"
+                callSlack(s+"---->"+author+ss)
+                break
+                #ss+= entry.select('.title')[0].text.encode('utf-8')
+                #ss+= "</a>"
+                #count[2] = count[2] + 1
+            if entry.find('a') is not None:
+                res = requests.get("https://www.ptt.cc/"+entry.find('a')['href'], verify=False)
+                article=BeautifulSoup(res.text,'html.parser')
+                push_userid=article.findAll('span',{'class':'push-userid'},text=True)
+
+                for user in push_userid:
+                    if  user.text.strip() in  checkAuthors:
+                        callSlack(user.text+'------>'+article.title.text+'------>'+"https://www.ptt.cc/"+entry.find('a')['href'])
+                        break
+                        
+def lambda_handler(event, context):
+    getPttMessage()
+    return "success"
+
+lambda_handler('a','b')
