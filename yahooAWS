@@ -1,0 +1,50 @@
+import urllib2
+import json
+import datetime
+import re
+import talib as ta
+#import pandas as pd
+import numpy as np
+from slackclient import SlackClient
+
+slack_token = "xoxp-132175588855-131572446965-349680286933-c9289f5b32071f841046b6337f4867cb"
+sc = SlackClient(slack_token)
+
+def callSlack(message):
+    sc.api_call(
+      "chat.postMessage",
+      channel="#yahooreal",
+      text=message
+    )
+MACD_FAST = 12
+MACD_SLOW = 26
+MACD_SIGNAL = 9
+url='https://tw.screener.finance.yahoo.net/future/q?type=ta&perd=5m&mkt=01&sym=WTX%26'
+
+def getYahooReal():
+    response = urllib2.urlopen(url)
+    d = response.read()
+    d=re.sub(r'null.*,\"ta\"', '{\"ta\"', d).replace(");","")
+    d=json.dumps(d).decode('string-escape').strip('"')
+
+    dataList=[]
+    dataListNP=[]
+    data = json.loads(d) 
+    for x in data['ta']:
+        dataList.append({'time':x['t'],'close':float(x['c'])})
+        dataListNP.append(float(x['c']))
+    #df=pd.DataFrame(dataList)    
+ 
+    macd, macdsignal, macdhist=ta.MACD(np.asarray(dataListNP), fastperiod=MACD_FAST, slowperiod=MACD_SLOW, signalperiod=MACD_SIGNAL)
+
+    
+    print macd[-1]
+  
+    callSlack("this is a test for yahoo real")
+    print 'finish'
+
+def lambda_handler(event, context):
+    getYahooReal()
+    return "success"
+
+lambda_handler('a','b')
