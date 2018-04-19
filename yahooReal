@@ -1,13 +1,19 @@
+%matplotlib inline
 import urllib2
 import json
 import sys,csv,re
 import datetime
 from time import sleep
 import time
-import talib
+import talib as ta
 import re
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
 
-
+MACD_FAST = 12
+MACD_SLOW = 26
+MACD_SIGNAL = 9
 url='https://tw.screener.finance.yahoo.net/future/q?type=ta&perd=5m&mkt=01&sym=WTX%26'
 print url
 response = urllib2.urlopen(url)
@@ -18,7 +24,33 @@ d=re.sub(r'null.*,\"ta\"', '{\"ta\"', d).replace(");","")
    
 d=json.dumps(d).decode('string-escape').strip('"')
     
-
-data = json.loads(d,parse_float=Decimal) 
+dataList=[]
+data = json.loads(d) 
 for x in data['ta']:
-    print x['t'],x['c']
+    dataList.append({'time':x['t'],'close':float(x['c'])})
+    #print x['t'],x['c']
+#print dataList
+
+
+
+macd, macdsignal, macdhist=ta.MACD(df['close'].values, fastperiod=MACD_FAST, slowperiod=MACD_SLOW, signalperiod=MACD_SIGNAL)
+
+
+ewma12 = pd.ewma(df['close'],span=MACD_FAST)
+ewma60 = pd.ewma(df['close'],span=MACD_SLOW)
+mydif = ewma12-ewma60
+mydea = pd.ewma(dif,span=MACD_SIGNAL)
+mybar = (dif-dea) 
+
+
+fig = plt.figure(figsize=[18,5])
+plt.plot(df['time'],macd,label='macd dif')
+plt.plot(df['time'],macdsignal,label='signal dea')
+plt.plot(df['time'],macdhist,label='hist bar')
+
+
+plt.plot(df['time'],mydif,label='my dif')
+plt.plot(df['time'],mydea,label='my dea')
+plt.plot(df['time'],mybar,label='my bar')
+
+plt.legend(loc='best')
