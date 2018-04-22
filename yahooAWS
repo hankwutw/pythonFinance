@@ -1,19 +1,16 @@
 import urllib2
 import json
-import datetime
-import re
-import talib as ta
-#import pandas as pd
-import numpy as np
 from slackclient import SlackClient
+import re
 
-slack_token = "xoxp-132175588855-131572446965-349680286933-c9289f5b32071f841046b6337f4867cb"
+slack_token = "xoxp-132175588855-131572446965-350379808753-1ca04b97f56558023f999ff796db4ce9"
 sc = SlackClient(slack_token)
 
 def callSlack(message):
+    print message
     sc.api_call(
       "chat.postMessage",
-      channel="#yahooreal",
+      channel="yahoorreal",
       text=message
     )
 MACD_FAST = 12
@@ -21,30 +18,110 @@ MACD_SLOW = 26
 MACD_SIGNAL = 9
 url='https://tw.screener.finance.yahoo.net/future/q?type=ta&perd=5m&mkt=01&sym=WTX%26'
 
+def getEMAList(inlist,num ):
+    k = 2.0 / float(num + 1.0)
+    ema = inlist[0]
+    emaList = [ema]
+    for item in inlist:
+        ema = item * k + ema * (1 - k)
+        emaList.append(ema)
+    return emaList
+
+dataList=[]
+dataListNP=[]
+timeList=[]
+
 def getYahooReal():
+    
     response = urllib2.urlopen(url)
     d = response.read()
     d=re.sub(r'null.*,\"ta\"', '{\"ta\"', d).replace(");","")
     d=json.dumps(d).decode('string-escape').strip('"')
-
-    dataList=[]
-    dataListNP=[]
+    
     data = json.loads(d) 
     for x in data['ta']:
         dataList.append({'time':x['t'],'close':float(x['c'])})
+        timeList.append(x['t'])
         dataListNP.append(float(x['c']))
-    #df=pd.DataFrame(dataList)    
- 
-    macd, macdsignal, macdhist=ta.MACD(np.asarray(dataListNP), fastperiod=MACD_FAST, slowperiod=MACD_SLOW, signalperiod=MACD_SIGNAL)
-
+   
+    slowMA=getEMAList(dataListNP,MACD_SLOW)
+    fastMA=getEMAList(dataListNP,MACD_FAST)
     
+    dif = [x - y for x,y in zip(fastMA,slowMA)]
+    #macd=fastMA-slowMA
+    
+    macd = getEMAList(dif,MACD_SIGNAL)
+    
+    bar = [(x - y) for x,y in zip(dif,macd)]
     print macd[-1]
-  
-    callSlack("this is a test for yahoo real")
+    if(dif[-1]>macd[-1] and dif[-2]<macd[-2]):
+        callSlack('short,time:{},point:{},macd:{},dif:{},bar:{}'.format(timeList[-1],dataListNP[-1],macd[-1],dif[-1],bar[-1]))
+    if(dif[-1]<macd[-1] and dif[-2]>macd[-2]):
+        callSlack('long,time:{},point:{},macd:{},dif:{},bar:{}'.format(timeList[-1],dataListNP[-1],macd[-1],dif[-1],bar[-1]))
+    
+    if (testCrossOver(int(bar[-1]),int(bar[-2]))):
+        callSlack('bar cross over,time:{},point:{},macd:{},dif:{},bar:{}'.format(timeList[-1],dataListNP[-1],macd[-1],dif[-1],bar[-1]))
     print 'finish'
+
+def testCrossOver(a,b):
+    if (a>0 and b <0):
+        return True
+    if (a<0 and b>0):
+        return True
+    return False
 
 def lambda_handler(event, context):
     getYahooReal()
     return "success"
 
 lambda_handler('a','b')
+
+
+%matplotlib inline
+import matplotlib.pyplot as plt
+import pandas as pd
+df=pd.DataFrame(dataList)
+#print df
+fig = plt.figure(figsize=[18,5])
+plt.plot(df.index,df['close'].values,label='my dif')
+plt.xticks(df.index, df['time'])
+plt.xticks(rotation=90)
+
+
+slowMA=getEMAList(dataListNP,MACD_SLOW)
+fastMA=getEMAList(dataListNP,MACD_FAST)
+    
+dif = [x - y for x,y in zip(fastMA,slowMA)]
+macd = getEMAList(dif,MACD_SIGNAL)  
+bar = [(x - y) for x,y in zip(dif,macd)]
+fig = plt.figure(figsize=[18,5])
+
+plt.plot(macd,label='macd dif')
+plt.plot(dif)
+
+singal=[]
+for x in range(2,len(macd)-1):
+    if(dif[x-1]>macd[x-1] and dif[x]<macd[x]):
+        singal.append(-10)
+    if(dif[x-1]<macd[x-1] and dif[x]>macd[x]):
+        singal.append(10)
+    else:
+        singal.append(0)
+plt.plot(singal)  
+#plt.plot(bar)
+
+
+
+fig = plt.figure(figsize=[18,5])
+singal=[]
+for x in range(2,len(macd)-1):
+    #print bar[x]
+    if(bar[x]<=0 and (bar[x]> bar[x-1]) and bar[x-1]<bar[x-2]):
+        #print '{},{},{}'.format(bar[x],bar[x-1],bar[x-2])
+        singal.append(5)
+    if(bar[x]>=0 and bar[x]<bar[x-1] and bar[x-1]> bar[x-2]):
+        singal.append(-5)
+    else:
+        singal.append(0)
+plt.plot(singal)  
+plt.plot(bar)
