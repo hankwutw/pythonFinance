@@ -3,7 +3,7 @@ import json
 from slackclient import SlackClient
 import re
 
-slack_token = "xoxp-132175588855-131572446965-350379808753-1ca04b97f56558023f999ff796db4ce9"
+slack_token = ""
 sc = SlackClient(slack_token)
 
 def callSlack(message):
